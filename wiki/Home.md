@@ -43,7 +43,12 @@ Il suit aussi ta souris du regard. Et si tu cliques sur lui, il réagit.
 3. Lance la partie, puis tape un nombre et valide.
 4. Lis la réponse de Bob et recommence jusqu'à trouver.
 
-La **barre** affiche le plus petit et le plus grand nombre encore possibles. Elle se resserre à chaque essai, avec un zoom quand il en reste très peu. Un nombre déjà éliminé par la barre est refusé, sans te faire perdre d'essai.
+La **barre** affiche le plus petit et le plus grand nombre encore possibles, avec un zoom quand il en reste très peu :
+
+- **Plus haut** enlève ton nombre et tout ce qui est en dessous. **Plus bas** enlève ton nombre et tout ce qui est au-dessus.
+- **La chaleur** garde une zone autour de ton nombre : plus il fait chaud, plus cette zone est petite.
+
+Un nombre déjà éliminé par la barre est refusé, sans te faire perdre d'essai.
 
 ## Les réponses de Bob
 
@@ -69,7 +74,7 @@ Ils s'activent **avant la partie**, en choisissant combien tu en veux : jusqu'à
 
 - **La base** dépend de l'écart entre tes deux nombres.
 - **Tes essais** : Bob les compare à un nombre idéal, qui dépend de l'intervalle et de ce qu'il te répond. Fais mieux pour multiplier ton score par presque 2.
-- **Le type de réponse** : la chaleur seule rapporte ×1,25, plus ou moins seul ×1,1 et le mode Indices ×1,4.
+- **Le type de réponse** : la chaleur aide beaucoup, alors elle rapporte moins (×0,8 seule et ×0,6 avec plus ou moins). Plus ou moins seul ne change rien (×1) et le mode Indices rapporte ×1,4.
 - **Le mode** : Essais limités, Chiffre interdit et Contre la montre peuvent aller jusqu'à ×2.
 - **Une défaite** rapporte 0 point.
 
@@ -110,7 +115,6 @@ Trouver le nombre dès le premier essai multiplie le score et déclenche un mess
 
 ## Astuces
 
-- Le bouton **⚖️ Milieu** remplit le champ avec le milieu de ce qui reste : c'est la façon la plus sûre de resserrer la barre.
 - La température ne fait que baisser quand tu t'éloignes : compare deux essais pour savoir lequel est le plus proche.
 - Tu peux écrire `2k`, `3M` ou `1Md` au lieu de taper tous les zéros.
 - **Espace** lance la partie, et **Entrée** valide ton nombre.

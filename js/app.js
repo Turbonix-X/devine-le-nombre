@@ -39,7 +39,7 @@ for (const id of [
   "optLimited", "triesInput", "triesPresets", "optForbidden", "forbiddenInput", "forbiddenMax", "forbiddenPresets", "showForbidden",
   "optTime", "durationInput", "durationPresets", "hintsNote", "bonusToggle", "bonusRow", "bonusInput", "bonusNote", "bonusOff",
   "gameBox", "loVal", "hiVal", "spanVal", "rbar", "zbar", "endLo", "endHi", "eliminated", "zoomBox", "zoomLo", "zoomHi",
-  "kpiTries", "kpi2Val", "kpi2Label", "kpiBonus", "guessInput", "guessPrompt", "midBtn", "bonusBtn", "guessError", "factsBox", "factsList",
+  "kpiTries", "kpi2Val", "kpi2Label", "kpiBonus", "guessInput", "guessPrompt", "bonusBtn", "guessError", "factsBox", "factsList",
   "endBox", "endTitle", "endTargetLabel", "endTarget", "endStars", "endScore", "endBest", "endRows",
   "mainBtn", "ghostBtn", "result", "hintLine", "triesTitle", "triesList", "triesEmpty",
   "gamesList", "gamesEmpty", "gamesCount", "resetBtn", "statPlayed", "statWins", "statBest", "statAvg", "statBars", "zonesHelp",
@@ -748,7 +748,6 @@ function setBusy(on) {
   document.body.classList.toggle("busy", on);
   els.mainBtn.disabled = on;
   els.guessInput.readOnly = on;
-  els.midBtn.disabled = on;
   els.bonusBtn.disabled = on;
 }
 
@@ -905,8 +904,8 @@ function answerWrong(n) {
 
   // Ce que le joueur vient d'apprendre
   if (heat) {
-    const { dMin, dMax } = Logic.bandDistances(d);
-    g.segs = Logic.intersect(g.segs, [[n - dMax, n - dMin], [n + dMin, n + dMax]]);
+    const radius = Logic.heatRadius(d);
+    g.segs = Logic.intersect(g.segs, [[n - radius, n + radius]]);
   }
   if (range) g.segs = Logic.intersect(g.segs, dir === "up" ? [[n + 1, g.hi0]] : [[g.lo0, n - 1]]);
   g.segs = Logic.subtract(g.segs, n);
@@ -1039,18 +1038,6 @@ function useBonus() {
   giveFact(true);
   setTimeout(() => { if (phase === "play") setMood("neutral"); }, 600);
   Haptics.buzz(15);
-  focusGuess();
-}
-
-function fillMiddle() {
-  if (phase !== "play" || busy) return;
-  const g = game;
-  // Le milieu du plus grand morceau qui reste
-  const seg = g.segs.reduce((best, s) => (s[1] - s[0] > best[1] - best[0] ? s : best));
-  let n = Math.floor((seg[0] + seg[1]) / 2);
-  while (g.guesses.some((x) => x.n === n) && n < seg[1]) n += 1;
-  els.guessInput.value = fmt(n);
-  Sound.click();
   focusGuess();
 }
 
@@ -1903,7 +1890,6 @@ els.guessInput.addEventListener("keydown", (e) => {
   }
 });
 els.guessInput.addEventListener("input", () => els.guessError.classList.add("hidden"));
-els.midBtn.addEventListener("click", fillMiddle);
 els.bonusBtn.addEventListener("click", useBonus);
 
 els.mainBtn.addEventListener("click", () => {

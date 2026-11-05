@@ -100,14 +100,12 @@ const Logic = (() => {
     return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
   }
 
-  // Ce que la chaleur apprend au joueur pour resserrer la barre : une tranche de distances
-  // (1, 2-3, 4-15, 16-63, 64-255…). Elle reste utile à toutes les échelles sans tout dévoiler.
-  function bandDistances(d) {
-    if (d <= 1) return { dMin: 1, dMax: 1 };
-    let dMin = 4;
-    while (dMin * 4 <= d) dMin *= 4;
-    if (d < 4) return { dMin: 2, dMax: 3 };
-    return { dMin, dMax: dMin * 4 - 1 };
+  // Taille de la zone gardée de chaque côté du nombre : plus il fait chaud, plus elle est petite.
+  // Les tailles possibles sont 1, 2, 3, 5, 8, 12, 18… pour ne pas donner la distance exacte.
+  function heatRadius(d) {
+    let radius = 1;
+    while (radius < d) radius = Math.ceil(radius * 1.5);
+    return radius;
   }
 
   // ---------- Morceaux d'intervalle encore possibles ----------
@@ -140,7 +138,7 @@ const Logic = (() => {
   // ---------- Score ----------
 
   // Essais qu'il faut pour un très bon joueur : plus Bob en dit, moins il en faut
-  const IDEAL_SHARE = { range: 1, heat: 0.65, both: 0.5, hints: 0.6 };
+  const IDEAL_SHARE = { range: 1, heat: 1, both: 0.75, hints: 0.6 };
   const optimalTries = (size, feedback = "range") => Math.max(1, Math.ceil(Math.log2(size) * IDEAL_SHARE[feedback]));
 
   // Niveau de l'exploit quand on trouve du premier coup : 0 à 3
@@ -151,7 +149,8 @@ const Logic = (() => {
     return 0;
   }
 
-  const FEEDBACK_BONUS = { both: 1, range: 1.1, heat: 1.25, hints: 1.4 };
+  // La chaleur aide beaucoup : elle rapporte moins de points
+  const FEEDBACK_BONUS = { range: 1, heat: 0.8, both: 0.6, hints: 1.4 };
   const times = (m) => `×${m.toFixed(2).replace(".", ",")}`;
 
   // Détail du score : la base dépend de l'écart des deux nombres, le reste des essais et du mode
@@ -170,7 +169,7 @@ const Logic = (() => {
       rows.push({ label, value: times(m) });
       total *= m;
     };
-    mult(o.feedback === "hints" ? "Seulement avec des indices" : o.feedback === "heat" ? "Seulement la chaleur" : "Seulement plus haut / plus bas", FEEDBACK_BONUS[o.feedback] || 1);
+    mult(o.feedback === "hints" ? "Seulement avec des indices" : o.feedback === "heat" ? "Avec la chaleur" : "Avec la chaleur et plus / moins", FEEDBACK_BONUS[o.feedback] || 1);
     if (o.mode === "limited") mult(`Limite de ${o.limit} essai${o.limit > 1 ? "s" : ""}`, 1 + 0.5 * Math.min(2, opt / o.limit));
     if (o.mode === "forbidden") {
       mult(o.showForbidden ? "Chiffres interdits visibles" : `${fmt(o.forbidden)} chiffre${o.forbidden > 1 ? "s" : ""} interdit${o.forbidden > 1 ? "s" : ""} cachés`,
@@ -356,7 +355,7 @@ const Logic = (() => {
 
   return {
     LIMIT, ABS_ZERO, HIT, NEXT, ZONES, fmt, randInt, pick, randomLogInt,
-    temperature, zoneOf, formatTemp, thermoLevel, tempColor, bandDistances,
+    temperature, zoneOf, formatTemp, thermoLevel, tempColor, heatRadius,
     intersect, subtract, segCount, inSegs, optimalTries, oneShotTier, score, createFactEngine,
   };
 })();

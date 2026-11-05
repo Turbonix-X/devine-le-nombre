@@ -307,7 +307,6 @@
               <label for="guessInput" class="setup-label" id="guessPrompt">Ton nombre</label>
               <div class="guess-row">
                 <input id="guessInput" class="input guess-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Tape un nombre">
-                <button id="midBtn" class="btn btn-small" title="Mettre le milieu de ce qui reste">⚖️ Milieu</button>
                 <button id="bonusBtn" class="btn btn-small bonus-btn hidden">💡 Indice</button>
               </div>
               <p id="guessError" class="error hidden"></p>
@@ -378,7 +377,7 @@
         <ul>
           <li><strong>La base</strong> dépend de l'écart entre tes deux nombres : plus il y a de nombres possibles, plus elle est grande.</li>
           <li><strong>Tes essais</strong> : Bob compare ton nombre d'essais au nombre idéal, qui dépend de l'intervalle et de ce qu'il te répond. Fais mieux pour multiplier ton score par presque 2.</li>
-          <li><strong>La chaleur seule</strong> rapporte ×1,25, <strong>plus ou moins seul</strong> ×1,1 et <strong>le mode Indices</strong> ×1,4.</li>
+          <li><strong>La chaleur</strong> aide beaucoup, alors elle rapporte moins : ×0,8 seule et ×0,6 avec plus ou moins. <strong>Plus ou moins seul</strong> ne change rien (×1) et <strong>le mode Indices</strong> rapporte ×1,4.</li>
           <li><strong>Essais limités</strong> : moins tu t'autorises d'essais, plus le bonus est gros (jusqu'à ×2).</li>
           <li><strong>Chiffre interdit</strong> : plus il y a de pièges cachés, plus ça rapporte (jusqu'à ×2).</li>
           <li><strong>Contre la montre</strong> : le temps qu'il te reste et la difficulté du chrono donnent jusqu'à ×2.</li>
