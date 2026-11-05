@@ -180,7 +180,7 @@ const Logic = (() => {
       mult(`Contre la montre (${Math.round(o.timeLeft)} s restantes)`, 1 + pressure + 0.5 * (o.timeLeft / o.duration));
     }
     if (o.bonusUsed > 0) mult(`${o.bonusUsed} indice${o.bonusUsed > 1 ? "s" : ""} bonus utilisé${o.bonusUsed > 1 ? "s" : ""}`, 0.9 ** o.bonusUsed);
-    if (n === 1) mult("Du premier coup !", [1, 2, 5, 10][oneShotTier(o.size)]);
+    if (n === 1 && !o.lastLeft) mult("Du premier coup !", [1, 2, 5, 10][oneShotTier(o.size)]);
     return { total: Math.max(1, Math.round(total)), rows, stars: eff >= 1 ? 3 : eff >= 0.6 ? 2 : 1 };
   }
 

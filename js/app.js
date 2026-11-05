@@ -875,6 +875,16 @@ async function submitGuess() {
     } else {
       answerWrong(n);
       if (g.mode === "limited" && g.guesses.length >= g.limit) await endGame("out");
+      else if (Logic.segCount(g.segs) === 1) {
+        // Plus qu'un seul nombre possible : pas besoin de le taper, et aucun essai de plus
+        g.lastLeft = true;
+        if (g.mode === "time") {
+          g.frozenLeft = left;
+          stopTimer();
+        }
+        await wait(900);
+        if (phase === "play") await endGame("win");
+      }
     }
   } finally {
     setBusy(false);
@@ -913,7 +923,6 @@ function answerWrong(n) {
   g.pinFresh = false;
 
   const dirText = dir === "up" ? "C'est plus haut." : "C'est plus bas.";
-  const lastOne = Logic.segCount(g.segs) === 1;
 
   if (g.feedback === "hints") {
     setMood("neutral");
@@ -953,7 +962,6 @@ function answerWrong(n) {
   if (g.feedback === "both") line = `${Logic.pick(zone.say)} ${dirText}`;
   else if (g.feedback === "heat") line = Logic.pick(zone.say);
   else line = Logic.pick(dir === "up" ? ["Plus haut !", "Vise plus haut !", "Non, c'est au-dessus !", "Encore plus grand !"] : ["Plus bas !", "Vise plus bas !", "Non, c'est en dessous !", "Encore plus petit !"]);
-  if (lastOne) line += ` Il ne reste plus que ${fmt(g.segs[0][0])} !`;
   say(line);
 
   const parts = [];
@@ -974,6 +982,24 @@ function setResultLine(n, text) {
   rest.textContent = `→ ${text}`;
   r.append(label, strong, rest);
   retrigger(r, "reveal");
+}
+
+// Le dernier nombre possible, trouvé par Bob : il ne compte pas comme un essai
+function addFreeItem(n) {
+  const li = document.createElement("li");
+  li.className = "recent-item try-item good";
+  const num = document.createElement("span");
+  num.className = "recent-obj";
+  num.textContent = "Bob";
+  const arrow = document.createElement("span");
+  arrow.className = "recent-arrow";
+  arrow.textContent = "→";
+  const strong = document.createElement("strong");
+  strong.textContent = fmt(n);
+  const info = document.createElement("small");
+  info.textContent = "🎁 Pas compté";
+  li.append(num, arrow, strong, info);
+  els.triesList.prepend(li);
 }
 
 function addTryItem(index, n, t, dir, good, mine) {
@@ -1061,7 +1087,7 @@ async function endGame(outcome) {
     const timeLeft = g.mode === "time" ? (g.frozenLeft ?? 0) : 0;
     result = Logic.score({
       size: g.size, tries: g.guesses.length, mode: g.mode, feedback: g.feedback, limit: g.limit,
-      forbidden: g.forbidden, showForbidden: g.showForbidden, duration: g.duration, timeLeft, bonusUsed: g.bonusUsed,
+      forbidden: g.forbidden, showForbidden: g.showForbidden, duration: g.duration, timeLeft, bonusUsed: g.bonusUsed, lastLeft: g.lastLeft,
     });
   }
 
@@ -1085,7 +1111,7 @@ function renderEnd(g, outcome, result, isRecord) {
   const n = g.guesses.length;
   els.endTitle.className = `end-title ${win ? "win" : "lose"}`;
   els.endTitle.textContent = win
-    ? (n === 1 ? "🎯 Du premier coup !" : `🎉 Trouvé en ${plural(n, "essai")} !`)
+    ? (n === 1 && !g.lastLeft ? "🎯 Du premier coup !" : `🎉 Trouvé en ${plural(n, "essai")} !`)
     : { out: "💀 Plus d'essais !", mine: "💥 Chiffre interdit !", time: "⏰ Temps écoulé !", quit: "🏳️ Partie abandonnée" }[outcome];
   els.endTargetLabel.textContent = win ? "Le nombre était bien" : "Le nombre était";
   els.endTarget.textContent = fmt(g.target);
@@ -1127,7 +1153,9 @@ function renderEnd(g, outcome, result, isRecord) {
 }
 
 function playWin(g) {
-  const tier = g.guesses.length === 1 ? Logic.oneShotTier(g.size) : 0;
+  const oneShot = g.guesses.length === 1 && !g.lastLeft;
+  const tier = oneShot ? Logic.oneShotTier(g.size) : 0;
+  if (g.lastLeft) addFreeItem(g.target);
   showDigits(g.target, "win");
   els.guessLabel.textContent = "Le nombre !";
   setMood("happy");
@@ -1145,7 +1173,7 @@ function playWin(g) {
   if (g.feedback === "range") setArrow("");
   if (g.feedback === "hints") els.orb.querySelector("span").textContent = "✓";
 
-  say(g.guesses.length === 1 ? "QUOI ?! Du premier coup ?! Tu as triché, avoue !" : Logic.pick(["Bravo, tu l'as trouvé !", "Bien joué ! C'était bien celui-là !", "Exactement ! Tu m'as eu !"]));
+  say(g.lastLeft ? `Il ne restait plus que ${fmt(g.target)} ! Pas besoin d'un essai de plus, c'est gagné !` : oneShot ? "QUOI ?! Du premier coup ?! Tu as triché, avoue !" : Logic.pick(["Bravo, tu l'as trouvé !", "Bien joué ! C'était bien celui-là !", "Exactement ! Tu m'as eu !"]));
   retrigger(els.stage, "landed", 1000);
   burstInStage(40, false);
   Sound.win();
@@ -1153,7 +1181,7 @@ function playWin(g) {
   FX.confetti(tier ? 60 : 130);
   setResultWin(g);
 
-  if (g.guesses.length === 1) {
+  if (oneShot) {
     if (tier) {
       setTimeout(() => showLegend(tier, g), 500);
     } else {
@@ -1239,7 +1267,7 @@ function recordGame(g, outcome, points, elapsed) {
   if (win) {
     stats.wins += 1;
     stats.winTries += n;
-    if (n === 1) stats.oneShots += 1;
+    if (n === 1 && !g.lastLeft) stats.oneShots += 1;
     if (points > stats.best) {
       isRecord = stats.best > 0;
       stats.best = points;
@@ -1249,7 +1277,7 @@ function recordGame(g, outcome, points, elapsed) {
   app.games.unshift({
     m: g.mode, f: g.feedback, lo: g.lo0, hi: g.hi0, t: g.target, o: outcome, s: points, d: Date.now(),
     el: Math.round(elapsed),
-    l: g.limit, x: g.forbidden, du: g.duration, b: g.bonusUsed,
+    l: g.limit, x: g.forbidden, du: g.duration, b: g.bonusUsed, a: g.lastLeft ? 1 : 0,
     g: g.guesses.map((x) => [x.n, x.t === null ? null : Math.round(x.t * 100) / 100, x.dir === "up" ? 1 : x.dir === "down" ? -1 : 0]),
   });
   app.games.length = Math.min(app.games.length, GAMES_MAX);
@@ -1423,6 +1451,12 @@ function renderGames() {
       }
       chips.appendChild(chip);
     });
+    if (p.a) {
+      const chip = document.createElement("span");
+      chip.className = "gchip good";
+      chip.textContent = `${fmt(p.t)} 🎁 pas compté`;
+      chips.appendChild(chip);
+    }
     li.append(top, meta, chips);
     list.appendChild(li);
   });
@@ -1536,7 +1570,7 @@ function sanitizeGames(list) {
       m: p.m, f: p.f, o: p.o,
       lo: clampInt(p.lo, 0, Logic.LIMIT, 0), hi: clampInt(p.hi, 0, Logic.LIMIT, 0), t: clampInt(p.t, 0, Logic.LIMIT, 0),
       s: clampInt(p.s, 0, 1e12, 0), d: clampInt(p.d, 0, 9e15, 0), el: clampInt(p.el, 0, 1e7, 0),
-      l: clampInt(p.l, 0, 100, 0), x: clampInt(p.x, 0, FORBIDDEN_MAX, 0), du: clampInt(p.du, 0, 3600, 0), b: clampInt(p.b, 0, BONUS_MAX_FREE, 0),
+      a: p.a === 1 ? 1 : 0, l: clampInt(p.l, 0, 100, 0), x: clampInt(p.x, 0, FORBIDDEN_MAX, 0), du: clampInt(p.du, 0, 3600, 0), b: clampInt(p.b, 0, BONUS_MAX_FREE, 0),
       g: p.g.filter(Array.isArray).slice(0, 5000).map(([n, t, dir]) => [
         clampInt(n, 0, Logic.LIMIT, 0),
         Number.isFinite(t) ? Math.max(Logic.ABS_ZERO, Math.min(Logic.HIT, t)) : null,

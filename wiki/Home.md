@@ -50,6 +50,8 @@ La **barre** affiche le plus petit et le plus grand nombre encore possibles, ave
 
 Un nombre déjà éliminé par la barre est refusé, sans te faire perdre d'essai.
 
+Quand il ne reste plus qu'un seul nombre possible, Bob termine la partie : tu as gagné, sans essai en plus. Il faut quand même qu'il te reste au moins un essai en mode Essais limités.
+
 ## Les réponses de Bob
 
 - **🌡️ Chaleur** : le thermomètre indique si tu es proche.
