@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+  <title>Devine le Nombre — Turbonix</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <script>
+    // Applique le thème avant l'affichage pour éviter un flash
+    (function () {
+      var prefs = {};
+      try { prefs = JSON.parse(localStorage.getItem("tx-prefs")) || {}; } catch (e) {}
+      var theme = prefs.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="turbonix.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="bg-blobs" aria-hidden="true"><span></span><span></span><span></span></div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <h1 class="site-title">Devine <span>le</span> Nombre</h1>
+      <div class="header-right">
+        <button id="soundBtn" class="hbtn" aria-pressed="true" title="Sons activés" aria-label="Activer ou couper les sons">
+          <svg class="on" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+          <svg class="off" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></svg>
+        </button>
+        <button id="vibBtn" class="hbtn" aria-pressed="true" title="Vibrations activées" aria-label="Activer ou couper les vibrations">
+          <svg class="on" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8"/><path d="M21 8v8"/></svg>
+          <svg class="off" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 3l18 18"/></svg>
+        </button>
+        <button id="shareBtn" class="hbtn" title="Partager / sauvegarder" aria-label="Partager la configuration">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>
+        </button>
+        <button id="clearBtn" class="hbtn danger" title="Effacer la sauvegarde" aria-label="Effacer la sauvegarde">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+        </button>
+        <button id="themeBtn" class="theme-toggle" aria-label="Changer de thème" title="Mode sombre / clair">
+          <span class="theme-icon sun">☀️</span>
+          <span class="theme-icon moon">🌙</span>
+        </button>
+        <a href="#" class="logo" aria-label="Turbonix Entertainment">
+          <img src="logo.svg" alt="Logo Turbonix" width="44" height="44">
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="main">
+    <!-- ===== Zone de jeu ===== -->
+    <section class="card full">
+      <div id="modes" class="modes" role="group" aria-label="Mode de jeu">
+        <span id="modeGlider" class="mode-glider"></span>
+        <button class="mode-card" data-mode="classic"><b>🎯</b><strong>Classique</strong><small>Tous les essais que tu veux</small></button>
+        <button class="mode-card" data-mode="limited"><b>🎟️</b><strong>Essais limités</strong><small>Tu choisis combien tu en as</small></button>
+        <button class="mode-card" data-mode="forbidden"><b>☠️</b><strong>Chiffre interdit</strong><small>Ne tombe pas dessus</small></button>
+        <button class="mode-card" data-mode="time"><b>⏱️</b><strong>Contre la montre</strong><small>Trouve avant la fin du temps</small></button>
+        <button class="mode-card" data-mode="hints"><b>🧩</b><strong>Indices</strong><small>Bob donne seulement des indices</small></button>
+      </div>
+
+      <div class="play-grid">
+        <!-- Scène : Bob, le thermomètre et ton nombre -->
+        <div id="stage" class="stage-zone game-stage" data-feedback="both" data-phase="idle">
+          <canvas id="stageFx" class="stage-fx" aria-hidden="true"></canvas>
+          <div class="stage-tint" aria-hidden="true"></div>
+          <div class="flames" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="frost" aria-hidden="true"></div>
+          <div id="timeBar" class="time-bar hidden" aria-hidden="true"><span id="timeFill"></span></div>
+          <div id="timeBig" class="time-big hidden" aria-hidden="true"></div>
+
+          <div class="stage-inner">
+            <div class="bubble" id="bubble" data-tone="hello">
+              <span class="bubble-name" aria-hidden="true">🤖 Bob</span>
+              <div class="bubble-body"><span id="bubbleText"></span><span class="bubble-caret" aria-hidden="true"></span></div>
+              <span class="bubble-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            </div>
+
+            <div class="bob" id="bot" data-mood="hello" title="Bob" aria-hidden="true">
+              <svg viewBox="0 0 160 190">
+                <defs>
+                  <linearGradient id="bobShell" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5a5468"/><stop offset=".55" stop-color="#34303e"/><stop offset="1" stop-color="#1c1a21"/></linearGradient>
+                  <linearGradient id="bobRim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4a8ff"/><stop offset=".5" stop-color="#9b6dff"/><stop offset="1" stop-color="#6f45d9"/></linearGradient>
+                  <linearGradient id="bobJetFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6a8"/><stop offset=".45" stop-color="#ffd60a"/><stop offset="1" stop-color="#ff6a1f" stop-opacity="0"/></linearGradient>
+                  <radialGradient id="bobVisor" cx=".5" cy=".35" r=".8"><stop offset="0" stop-color="#231c33"/><stop offset="1" stop-color="#07060b"/></radialGradient>
+                  <linearGradient id="bobGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6a8"/><stop offset=".5" stop-color="#ffd60a"/><stop offset="1" stop-color="#d99a00"/></linearGradient>
+                </defs>
+
+                <ellipse class="bob-shadow" cx="80" cy="183" rx="38" ry="5"/>
+
+                <g class="bob-rig">
+                  <path class="bob-jet" d="M67 150q13 36 26 0z"/>
+
+                  <path class="bob-body" d="M50 114q0-12 12-12h36q12 0 12 12v20q0 24-30 24t-30-24z"/>
+                  <rect class="bob-chest" x="63" y="113" width="34" height="27" rx="9"/>
+                  <path class="bob-x" d="M70 118h6l14 17h-6zM84 118h6l-14 17h-6z"/>
+
+                  <path class="bob-scarf" d="M50 101q30 13 60 0l2 9q-32 14-64 0zM90 112l13 25-11-2-10-19z"/>
+
+                  <g class="bob-head">
+                    <path class="bob-spring" d="M80 28q-7-3 0-6t0-6 0-6"/>
+                    <circle class="bob-tip" cx="80" cy="7" r="6.5"/>
+                    <g class="bob-sparks"><path d="M66 5l-7-3M94 5l7-3M68 15l-8 2M92 15l8 2"/></g>
+
+                    <rect class="bob-ear" x="12" y="50" width="14" height="30" rx="7"/>
+                    <rect class="bob-ear" x="134" y="50" width="14" height="30" rx="7"/>
+
+                    <rect class="bob-face" x="22" y="26" width="116" height="82" rx="28"/>
+                    <path class="bob-gloss" d="M38 35q42-8 84 0-5-3-12-3H50q-7 0-12 3z"/>
+                    <rect class="bob-visor" x="33" y="38" width="94" height="59" rx="19"/>
+
+                    <circle class="bob-cheek" cx="47" cy="80" r="6.5"/>
+                    <circle class="bob-cheek" cx="113" cy="80" r="6.5"/>
+
+                    <g class="bob-eyes">
+                      <g class="bob-eye-open">
+                        <g class="bob-eye"><ellipse cx="60" cy="62" rx="10.5" ry="12.5"/><circle class="bob-shine" cx="64" cy="57" r="3.4"/></g>
+                        <g class="bob-eye"><ellipse cx="100" cy="62" rx="10.5" ry="12.5"/><circle class="bob-shine" cx="104" cy="57" r="3.4"/></g>
+                      </g>
+                      <path class="bob-eye-happy" d="M49 66q11-15 22 0M89 66q11-15 22 0"/>
+                      <path class="bob-eye-dead" d="M52 54l16 16M68 54L52 70M92 54l16 16M108 54L92 70"/>
+                    </g>
+                    <path class="bob-brow bob-brow-l" d="M49 47q11-5 22 0"/>
+                    <path class="bob-brow bob-brow-r" d="M89 47q11-5 22 0"/>
+
+                    <path class="m m-neutral" d="M71 82q9 5 18 0"/>
+                    <path class="m m-happy" d="M65 77h30q-1 15-15 15t-15-15z"/>
+                    <path class="m m-sad" d="M68 89q12-11 24 0"/>
+                    <path class="m m-cold" d="M63 84l6-4 5.500 4 5.500-4 5.500 4 5.500-4 6 4"/>
+                    <ellipse class="m m-shock" cx="80" cy="83" rx="7" ry="8.500"/>
+                    <path class="m m-hot" d="M66 77h28q-1 13-14 13t-14-13z"/>
+                    <path class="m m-dead" d="M64 84q4-5 8 0t8 0 8 0 8 0"/>
+                    <ellipse class="m m-talk" cx="80" cy="83" rx="9" ry="6"/>
+
+                    <path class="bob-soot" d="M30 44q6-7 12-1t-3 10-9-9zM118 88q7-5 12 1t-5 9-7-10zM96 30q6-3 10 1t-3 6-7-7z"/>
+                    <path class="bob-snow" d="M26 42q2-20 26-20h56q24 0 26 20-8-5-14 0-7-6-14 0-8-6-15 0-7-6-14 0-8-6-15 0-7-6-13 0-7-5-19 0z"/>
+                    <path class="bob-icicle" d="M38 104l4 13 5-14zM58 107l3 9 4-9zM96 107l4 12 4-12zM116 104l3 9 5-11z"/>
+                    <g class="bob-sweat">
+                      <path d="M139 28c5 7 7 10 7 14a7 7 0 0 1-14 0c0-4 2-7 7-14z"/>
+                      <path d="M20 40c3 5 5 7 5 10a5 5 0 0 1-10 0c0-3 2-5 5-10z"/>
+                    </g>
+                  </g>
+
+                  <g class="bob-arm bob-arm-l"><path class="bob-limb" d="M52 116q-20 5-26 24"/><circle class="bob-hand" cx="25" cy="144" r="8.5"/></g>
+                  <g class="bob-arm bob-arm-r"><path class="bob-limb" d="M108 116q20 5 26 24"/><circle class="bob-hand" cx="135" cy="144" r="8.5"/></g>
+                  <g class="bob-puffs"><circle cx="80" cy="96" r="5"/><circle cx="88" cy="94" r="4"/><circle cx="72" cy="94" r="3.500"/></g>
+                  <g class="bob-steam"><path d="M46 20q-7-6 0-12t0-12"/><path d="M114 20q7-6 0-12t0-12"/></g>
+                  <g class="bob-smoke"><circle cx="50" cy="20" r="7"/><circle cx="110" cy="16" r="9"/><circle cx="82" cy="10" r="6"/></g>
+                  <rect class="bob-iceblock" x="4" y="2" width="152" height="164" rx="20"/>
+                  <path class="bob-iceshine" d="M18 14h40L18 62zM142 150h-30l30-34z"/>
+                </g>
+              </svg>
+            </div>
+
+<div class="arrow-slot" id="arrowSlot">
+              <div class="arrow-big" id="arrow" data-dir="" aria-hidden="true">
+                <svg viewBox="0 0 60 28"><path d="M6 24 30 5l24 19"/></svg>
+                <svg viewBox="0 0 60 28"><path d="M6 24 30 5l24 19"/></svg>
+                <svg viewBox="0 0 60 28"><path d="M6 24 30 5l24 19"/></svg>
+                <span id="arrowLabel"></span>
+              </div>
+            </div>
+
+            <div class="gauge" id="gauge">
+              <div class="temp-read" id="tempRead">
+                <span class="zone-name" id="zoneName">En attente</span>
+                <strong id="tempValue">—</strong>
+              </div>
+
+              <div class="thermo" id="thermo" aria-hidden="true">
+                <div class="thermo-scale" id="thermoScale"></div>
+                <div class="thermo-tube"><div class="thermo-fluid"></div><div class="thermo-gloss"></div></div>
+                <div class="thermo-bulb"></div>
+                <svg class="thermo-cracks" viewBox="0 0 60 300" preserveAspectRatio="none"><path pathLength="1" d="M30 12 22 44l13 26-16 40 18 34-14 44 12 30"/><path pathLength="1" d="M34 30l9 22-6 20M20 120l-8 18 10 16M36 200l8 16-6 22"/></svg>
+              </div>
+
+              <div class="orb" id="orb" aria-hidden="true"><span id="orbMark">?</span><i></i><i></i></div>
+
+              <div class="guess-num">
+                <small id="guessLabel">Ton nombre</small>
+                <div class="guess-digits" id="guessDigits" aria-hidden="true">?</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="countdown" class="countdown hidden" aria-hidden="true"></div>
+          <div id="stageBanner" class="banner hidden"></div>
+        </div>
+
+        <!-- Colonne de droite : réglages, puis partie, puis résultat -->
+        <div class="side">
+          <div id="setupBox" class="side-box">
+            <div class="field">
+              <label>Choisis tes deux nombres <small>(de 0 à 1 000 000 000)</small></label>
+              <div class="interval-row">
+                <input id="minInput" class="input num-input" type="text" inputmode="numeric" autocomplete="off" aria-label="Plus petit nombre">
+                <span class="interval-sep">à</span>
+                <input id="maxInput" class="input num-input" type="text" inputmode="numeric" autocomplete="off" aria-label="Plus grand nombre">
+                <button id="randRangeBtn" class="icon-btn" title="Intervalle au hasard" aria-label="Intervalle au hasard">🎲</button>
+              </div>
+            </div>
+            <div id="rangePresets" class="presets setup-gap">
+              <button class="chip" data-max="10">1 à 10</button>
+              <button class="chip" data-max="100">1 à 100</button>
+              <button class="chip" data-max="1000">1 à 1 000</button>
+              <button class="chip" data-max="10000">1 à 10 000</button>
+              <button class="chip" data-max="1000000">1 à 1 M</button>
+              <button class="chip" data-max="1000000000">1 à 1 Md</button>
+            </div>
+            <p id="rangeInfo" class="muted small setup-gap"></p>
+            <p id="rangeError" class="error hidden"></p>
+
+            <div id="feedbackBox" class="setup-block">
+              <div class="setup-label">Ce que Bob te répond</div>
+              <div id="feedbackSwitch" class="pill-switch pill-3" data-active="2" role="group" aria-label="Type de réponse de Bob">
+                <span class="pill-indicator"></span>
+                <button data-feedback="heat">🌡️ Chaleur</button>
+                <button data-feedback="range">↕️ Plus / moins</button>
+                <button data-feedback="both" class="active">🔥 Les deux</button>
+              </div>
+            </div>
+
+            <div id="optLimited" class="setup-block mode-opt hidden">
+              <div class="field">
+                <label for="triesInput">Nombre d'essais <small>(1 à 100, moins tu en prends, plus le score grimpe)</small></label>
+                <div class="field-row">
+                  <input id="triesInput" class="input short" type="number" min="1" max="100" inputmode="numeric">
+                  <div id="triesPresets" class="presets"></div>
+                </div>
+              </div>
+            </div>
+
+            <div id="optForbidden" class="setup-block mode-opt hidden">
+              <div class="field">
+                <label for="forbiddenInput">Nombre de chiffres interdits <small id="forbiddenMax"></small></label>
+                <div class="field-row">
+                  <input id="forbiddenInput" class="input short" type="number" min="1" inputmode="numeric">
+                  <div id="forbiddenPresets" class="presets"></div>
+                </div>
+              </div>
+              <label class="switch setup-gap">
+                <input id="showForbidden" type="checkbox">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span>Les montrer sur la barre <small class="muted">(plus facile, moins de points)</small></span>
+              </label>
+            </div>
+
+            <div id="optTime" class="setup-block mode-opt hidden">
+              <div class="field">
+                <label for="durationInput">Durée en secondes <small>(5 à 3 600)</small></label>
+                <div class="field-row">
+                  <input id="durationInput" class="input short" type="number" min="5" max="3600" inputmode="numeric">
+                  <div id="durationPresets" class="presets">
+                    <button class="chip" data-v="15">15 s</button>
+                    <button class="chip" data-v="30">30 s</button>
+                    <button class="chip" data-v="60">1 min</button>
+                    <button class="chip" data-v="120">2 min</button>
+                    <button class="chip" data-v="300">5 min</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p id="hintsNote" class="info setup-block hidden">🧩 Pas de chaleur ni de plus ou moins : Bob te donne un indice à chaque essai, et ses indices sont de plus en plus précis.</p>
+
+            <div class="setup-block">
+              <label class="switch">
+                <input id="bonusToggle" type="checkbox">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span>💡 Indices bonus</span>
+              </label>
+              <div id="bonusRow" class="field-row setup-gap bonus-row hidden">
+                <input id="bonusInput" class="input short" type="number" min="1" inputmode="numeric" aria-label="Nombre d'indices bonus">
+                <span id="bonusNote" class="muted small"></span>
+              </div>
+              <p id="bonusOff" class="muted small setup-gap hidden"></p>
+            </div>
+          </div>
+
+          <div id="gameBox" class="side-box hidden">
+            <div class="range-box">
+              <div class="range-head">
+                <div class="bound"><small>Minimum possible</small><strong id="loVal">1</strong></div>
+                <div class="bound middle"><strong id="spanVal">100</strong><small>possibles</small></div>
+                <div class="bound right"><small>Maximum possible</small><strong id="hiVal">100</strong></div>
+              </div>
+              <div class="rbar" id="rbar"><div class="rbar-segs"></div><div class="rbar-pins"></div></div>
+              <div class="rbar-ends"><span id="endLo"></span><span id="eliminated"></span><span id="endHi"></span></div>
+              <div id="zoomBox" class="zoom-box hidden">
+                <div class="rbar-ends"><span id="zoomLo"></span><span>🔍 Zoom</span><span id="zoomHi"></span></div>
+                <div class="rbar zoom" id="zbar"><div class="rbar-segs"></div><div class="rbar-pins"></div></div>
+              </div>
+            </div>
+
+            <div class="kpis play-kpis">
+              <div class="kpi"><span class="kpi-value" id="kpiTries">0</span><span class="kpi-label">essais</span></div>
+              <div class="kpi" id="kpi2"><span class="kpi-value" id="kpi2Val">∞</span><span class="kpi-label" id="kpi2Label">restants</span></div>
+              <div class="kpi"><span class="kpi-value" id="kpiBonus">0</span><span class="kpi-label">indices bonus</span></div>
+            </div>
+
+            <div class="guess-form">
+              <label for="guessInput" class="setup-label" id="guessPrompt">Ton nombre</label>
+              <div class="guess-row">
+                <input id="guessInput" class="input guess-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Tape un nombre">
+                <button id="midBtn" class="btn btn-small" title="Mettre le milieu de ce qui reste">⚖️ Milieu</button>
+                <button id="bonusBtn" class="btn btn-small bonus-btn hidden">💡 Indice</button>
+              </div>
+              <p id="guessError" class="error hidden"></p>
+            </div>
+
+            <div id="factsBox" class="facts-box hidden">
+              <div class="setup-label">Indices de Bob</div>
+              <ol id="factsList" class="facts"></ol>
+            </div>
+          </div>
+
+          <div id="endBox" class="side-box hidden">
+            <div id="endTitle" class="end-title"></div>
+            <div class="end-target"><small id="endTargetLabel">Le nombre était</small><strong id="endTarget"></strong></div>
+            <div class="end-score">
+              <div class="stars" id="endStars"></div>
+              <strong id="endScore">0</strong>
+              <small>points <span id="endBest" class="best-tag hidden">Nouveau record !</span></small>
+            </div>
+            <ul id="endRows" class="score-rows"></ul>
+          </div>
+
+          <div class="actions side-actions">
+            <button id="mainBtn" class="btn btn-primary">🎯 Lancer la partie</button>
+            <button id="ghostBtn" class="btn btn-ghost hidden">🏳️ Abandonner</button>
+          </div>
+        </div>
+      </div>
+
+      <p id="result" class="result" aria-live="polite"></p>
+      <p id="hintLine" class="hint"></p>
+
+      <div class="divider">
+        <h3 id="triesTitle">Tes essais</h3>
+        <ol id="triesList" class="recent-list tries-list"></ol>
+        <p id="triesEmpty" class="muted small">Lance une partie : tous tes essais s'afficheront ici.</p>
+      </div>
+    </section>
+
+    <!-- ===== Parties jouées ===== -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Mes parties</h2>
+        <span id="gamesCount" class="muted small"></span>
+      </div>
+      <ol id="gamesList" class="games"></ol>
+      <p id="gamesEmpty" class="muted small">Aucune partie pour l'instant. Pour chaque partie, tu retrouveras ici le nombre d'essais et tous les nombres que tu as essayés.</p>
+    </section>
+
+    <!-- ===== Statistiques ===== -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Statistiques</h2>
+        <button id="resetBtn" class="btn btn-small">Réinitialiser</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><span class="kpi-value" id="statPlayed">0</span><span class="kpi-label">parties</span></div>
+        <div class="kpi"><span class="kpi-value" id="statWins">—</span><span class="kpi-label">victoires</span></div>
+        <div class="kpi"><span class="kpi-value" id="statBest">—</span><span class="kpi-label">record</span></div>
+        <div class="kpi"><span class="kpi-value" id="statAvg">—</span><span class="kpi-label">essais moyens</span></div>
+      </div>
+
+      <h3>Meilleur score par mode</h3>
+      <div id="statBars" class="bars"></div>
+
+      <details class="help">
+        <summary>Comment marche le score ?</summary>
+        <ul>
+          <li><strong>La base</strong> dépend de l'écart entre tes deux nombres : plus il y a de nombres possibles, plus elle est grande.</li>
+          <li><strong>Tes essais</strong> : Bob compare ton nombre d'essais au nombre idéal, qui dépend de l'intervalle et de ce qu'il te répond. Fais mieux pour multiplier ton score par presque 2.</li>
+          <li><strong>La chaleur seule</strong> rapporte ×1,25, <strong>plus ou moins seul</strong> ×1,1 et <strong>le mode Indices</strong> ×1,4.</li>
+          <li><strong>Essais limités</strong> : moins tu t'autorises d'essais, plus le bonus est gros (jusqu'à ×2).</li>
+          <li><strong>Chiffre interdit</strong> : plus il y a de pièges cachés, plus ça rapporte (jusqu'à ×2).</li>
+          <li><strong>Contre la montre</strong> : le temps qu'il te reste et la difficulté du chrono donnent jusqu'à ×2.</li>
+          <li><strong>Chaque indice bonus utilisé</strong> enlève 10 %. Ceux que tu n'utilises pas ne coûtent rien.</li>
+          <li><strong>Du premier coup</strong> : ×2 au-dessus de 10 000 nombres, ×5 à partir de 1 million, ×10 sur 1 milliard. Et un message à la hauteur de l'exploit.</li>
+        </ul>
+      </details>
+
+      <details class="help">
+        <summary>Les températures, du plus froid au plus chaud</summary>
+        <ul id="zonesHelp" class="zones-help"></ul>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p><span id="year"></span> Turbonix Entertainment. Tous droits réservés.</p>
+  </footer>
+
+  <canvas id="topFx" class="top-fx" aria-hidden="true"></canvas>
+
+  <!-- Grand message : trouvé du premier coup -->
+  <div id="legend" class="legend hidden" role="dialog" aria-modal="true" aria-labelledby="legendTitle">
+    <div class="legend-rays" aria-hidden="true"></div>
+    <div class="legend-flash" aria-hidden="true"></div>
+    <div class="legend-card">
+      <img id="legendLogo" class="legend-logo" src="logo.svg" alt="" width="110" height="110">
+      <div id="legendKicker" class="legend-kicker"></div>
+      <h2 id="legendTitle" class="legend-title"></h2>
+      <div id="legendNumber" class="legend-number"></div>
+      <p id="legendOdds" class="legend-odds"></p>
+      <p id="legendText" class="legend-text"></p>
+      <div class="legend-actions">
+        <button id="legendCopy" class="btn btn-small legend-btn">📋 Copier mon exploit</button>
+        <button id="legendClose" class="btn btn-small legend-btn">Continuer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Partage & fichier -->
+  <dialog id="shareDialog" class="dialog">
+    <form method="dialog" class="dialog-close"><button aria-label="Fermer">✕</button></form>
+    <h2>Partager &amp; sauvegarder</h2>
+
+    <h3>🔗 Lien de ta partie</h3>
+    <p class="muted small">Envoie ce lien à tes amis : en l'ouvrant, ils retrouvent le même mode et les mêmes réglages. Le nombre à deviner reste différent pour chacun.</p>
+    <div class="field-row">
+      <input id="shareLink" class="input grow" type="text" readonly>
+      <button id="copyLinkBtn" class="btn btn-small">Copier</button>
+    </div>
+    <p id="fileWarn" class="warn small hidden">Le site est ouvert depuis un fichier de ton PC : pour que le lien marche chez tes amis, le site doit être en ligne. Ils peuvent aussi coller le lien ci-dessous sur leur propre copie du site.</p>
+
+    <h3>📥 Charger un lien reçu</h3>
+    <div class="field-row">
+      <input id="pasteLink" class="input grow" type="text" placeholder="Colle le lien ici" autocomplete="off">
+      <button id="loadLinkBtn" class="btn btn-small">Charger</button>
+    </div>
+    <p id="pasteError" class="error hidden"></p>
+
+    <h3>💾 Fichier de sauvegarde</h3>
+    <p class="muted small">Tout est déjà sauvegardé automatiquement sur cet appareil (dans le navigateur). Tu peux aussi garder une copie dans un fichier.</p>
+    <div class="field-row wrap">
+      <button id="exportBtn" class="btn btn-small">Télécharger le fichier (.json)</button>
+      <label class="btn btn-small file-btn">Ouvrir un fichier…
+        <input id="importInput" type="file" accept=".json,application/json" hidden>
+      </label>
+    </div>
+  </dialog>
+
+  <!-- Confirmation : tout effacer -->
+  <dialog id="confirmDialog" class="dialog small">
+    <h2>Effacer la sauvegarde ?</h2>
+    <p>Est-ce que vous voulez vraiment tout effacer ? Les réglages, les statistiques et l'historique de vos parties seront remis à zéro. Cette action est définitive.</p>
+    <form method="dialog" class="dialog-actions">
+      <button value="cancel" class="btn btn-small">Annuler</button>
+      <button value="ok" class="btn btn-small btn-danger">Oui, tout effacer</button>
+    </form>
+  </dialog>
+
+  <!-- Confirmation : réinitialiser les statistiques -->
+  <dialog id="resetDialog" class="dialog small">
+    <h2>Réinitialiser les statistiques ?</h2>
+    <p>Est-ce que vous voulez vraiment effacer les statistiques et l'historique des parties ? Les réglages seront conservés. Cette action est définitive.</p>
+    <form method="dialog" class="dialog-actions">
+      <button value="cancel" class="btn btn-small">Annuler</button>
+      <button value="ok" class="btn btn-small btn-danger">Oui, réinitialiser</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/sound.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
